@@ -185,24 +185,50 @@ class App:
                 lines = file.readlines()
 
             new_lines = []
+            in_shooter_game_settings = False
+            fullscreen_mode_exists = False
+
             for line in lines:
-                if line.startswith('ResolutionSizeX='):
-                    new_lines.append(f'ResolutionSizeX={width}\n')
-                elif line.startswith('ResolutionSizeY='):
-                    new_lines.append(f'ResolutionSizeY={height}\n')
-                elif line.startswith('FullscreenMode='):
-                    new_lines.append('FullscreenMode=2\n')
-                elif line.startswith('PreferredFullscreenMode='):
-                    new_lines.append('PreferredFullscreenMode=2\n')
-                elif line.startswith('bShouldLetterbox='):
-                    new_lines.append('bShouldLetterbox=False\n')
-                elif line.startswith('bLastConfirmedShouldLetterbox='):
-                    new_lines.append('bLastConfirmedShouldLetterbox=False\n')
+                if line.strip() == '[/Script/ShooterGame.ShooterGameUserSettings]':
+                    in_shooter_game_settings = True
+                elif line.startswith('[') and in_shooter_game_settings:
+                    in_shooter_game_settings = False
+
+                if in_shooter_game_settings:
+                    if line.startswith('ResolutionSizeX='):
+                        new_lines.append(f'ResolutionSizeX={width}\n')
+                    elif line.startswith('ResolutionSizeY='):
+                        new_lines.append(f'ResolutionSizeY={height}\n')
+                    elif line.startswith('FullscreenMode='):
+                        new_lines.append('FullscreenMode=2\n')
+                        fullscreen_mode_exists = True
+                    elif line.startswith('PreferredFullscreenMode='):
+                        new_lines.append('PreferredFullscreenMode=2\n')
+                    elif line.startswith('LastConfirmedFullscreenMode='):
+                        new_lines.append('LastConfirmedFullscreenMode=2\n')
+                    elif line.startswith('DesiredScreenWidth='):
+                        new_lines.append(f'DesiredScreenWidth={width}\n')
+                    elif line.startswith('DesiredScreenHeight='):
+                        new_lines.append(f'DesiredScreenHeight={height}\n')
+                    elif line.startswith('LastUserConfirmedResolutionSizeX='):
+                        new_lines.append(f'LastUserConfirmedResolutionSizeX={width}\n')
+                    elif line.startswith('LastUserConfirmedResolutionSizeY='):
+                        new_lines.append(f'LastUserConfirmedResolutionSizeY={height}\n')
+                    elif line.startswith('WindowPosX='):
+                        new_lines.append('WindowPosX=0\n')
+                    elif line.startswith('WindowPosY='):
+                        new_lines.append('WindowPosY=0\n')
+                    else:
+                        new_lines.append(line)
                 else:
                     new_lines.append(line)
 
+            if not fullscreen_mode_exists:
+                new_lines.insert(new_lines.index('[/Script/ShooterGame.ShooterGameUserSettings]\n') + 1, 'FullscreenMode=2\n')
+
             with open(filename, 'w') as file:
                 file.writelines(new_lines)
+
         except Exception as e:
             messagebox.showerror("Erreur", f"Une erreur est survenue lors de la mise à jour du fichier INI : {e}")
 
