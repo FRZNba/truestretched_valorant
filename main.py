@@ -6,6 +6,9 @@ import json
 import sys
 import webbrowser
 import customtkinter as ctk
+import requests
+from tkinter import messagebox
+import tkinter as tk
 
 class App:
     def __init__(self, root):
@@ -23,10 +26,53 @@ class App:
 
         self.selected_file = None
         self.selected_resolution = (1440, 1080)
-
+        self.prog_version = "3.2"
         self.config_dir = self.get_config_directory()
         self.create_widgets()
         self.load_settings()
+        self.check_for_updates()
+
+    def check_for_updates(self):
+        try:
+            response = requests.get("https://api.github.com/repos/FRZNba/truestretched_valorant/releases/latest")
+            response.raise_for_status()  
+            latest_release = response.json()
+            latest_version = latest_release['tag_name']
+            release_url = latest_release['html_url']
+
+            if self.prog_version != latest_version:
+                self.show_update_notification(release_url)
+        except requests.RequestException as e:
+            print(f"Erreur lors de la vérification des mises à jour : {e}")
+
+    def show_update_notification(self, release_url):
+        update_window = tk.Toplevel(self.root)
+        update_window.title("Mise à jour disponible")
+        update_window.geometry("300x150")
+        update_window.configure(bg="#0e0e0e")
+
+     
+        update_window.overrideredirect(True)  
+        
+
+        x = self.root.winfo_screenwidth() - 1200
+        y = self.root.winfo_screenheight() - 540
+        update_window.geometry(f"300x125+{x}+{y}")
+
+        message = "Mise à jour de TrueStretched Disponible : "
+        label = tk.Label(update_window, text=message, bg="#0e0e0e", fg="white", font=("Arial", 12))
+        label.pack(pady=10)
+
+
+
+        link = ctk.CTkLabel(update_window, text="Cliquez ici pour voir les détails", text_color="#0055ca", cursor="hand2", bg_color="#0e0e0e")
+        link.pack()
+        link.bind("<Button-1>", lambda e: webbrowser.open(release_url))
+
+        close_button = ctk.CTkButton(update_window, text="Fermer", command=update_window.destroy, fg_color="white", text_color="black", width=70, hover_color="#808080")
+        close_button.pack( padx=5)
+        close_button.pack(pady=10)
+
 
     def get_config_directory(self):
         if getattr(sys, 'frozen', False):  
@@ -50,6 +96,16 @@ class App:
         self.create_page("help")
 
         self.show_page("res")
+
+
+        version_label = ctk.CTkLabel(
+            self.root,
+            text=f" v{self.prog_version} ",
+            text_color="white",
+            bg_color=self.root.cget('bg'),
+            fg_color=self.root.cget('bg')
+        )
+        version_label.place(relx=1.0, rely=1.0, anchor="se", x=-10, y=-10)
 
     def create_page(self, page_name):
         frame = ctk.CTkFrame(self.root, fg_color="#0e0e0e")
@@ -109,7 +165,6 @@ class App:
                 frame.pack_forget()
 
     def choose_file(self):
-    
         user_profile_path = os.path.expanduser("~")
         valorant_config_path = os.path.join(user_profile_path, "AppData", "Local", "VALORANT", "Saved", "Config")
 
@@ -185,50 +240,26 @@ class App:
                 lines = file.readlines()
 
             new_lines = []
-            in_shooter_game_settings = False
-            fullscreen_mode_exists = False
-
             for line in lines:
-                if line.strip() == '[/Script/ShooterGame.ShooterGameUserSettings]':
-                    in_shooter_game_settings = True
-                elif line.startswith('[') and in_shooter_game_settings:
-                    in_shooter_game_settings = False
-
-                if in_shooter_game_settings:
-                    if line.startswith('ResolutionSizeX='):
-                        new_lines.append(f'ResolutionSizeX={width}\n')
-                    elif line.startswith('ResolutionSizeY='):
-                        new_lines.append(f'ResolutionSizeY={height}\n')
-                    elif line.startswith('FullscreenMode='):
-                        new_lines.append('FullscreenMode=2\n')
-                        fullscreen_mode_exists = True
-                    elif line.startswith('PreferredFullscreenMode='):
-                        new_lines.append('PreferredFullscreenMode=2\n')
-                    elif line.startswith('LastConfirmedFullscreenMode='):
-                        new_lines.append('LastConfirmedFullscreenMode=2\n')
-                    elif line.startswith('DesiredScreenWidth='):
-                        new_lines.append(f'DesiredScreenWidth={width}\n')
-                    elif line.startswith('DesiredScreenHeight='):
-                        new_lines.append(f'DesiredScreenHeight={height}\n')
-                    elif line.startswith('LastUserConfirmedResolutionSizeX='):
-                        new_lines.append(f'LastUserConfirmedResolutionSizeX={width}\n')
-                    elif line.startswith('LastUserConfirmedResolutionSizeY='):
-                        new_lines.append(f'LastUserConfirmedResolutionSizeY={height}\n')
-                    elif line.startswith('WindowPosX='):
-                        new_lines.append('WindowPosX=0\n')
-                    elif line.startswith('WindowPosY='):
-                        new_lines.append('WindowPosY=0\n')
-                    else:
-                        new_lines.append(line)
+                if line.startswith('ResolutionSizeX='):
+                    new_lines.append(f'ResolutionSizeX={width}\n')
+                elif line.startswith('ResolutionSizeY='):
+                    new_lines.append(f'ResolutionSizeY={height}\n')
+                elif line.startswith('FullscreenMode='):
+                    new_lines.append('FullscreenMode=2\n')
+                elif line.startswith('PreferredFullscreenMode='):
+                    new_lines.append('PreferredFullscreenMode=2\n')
+                elif line.startswith('LastConfirmedFullscreenMode='):
+                    new_lines.append('LastConfirmedFullscreenMode=2 \n')
+                elif line.startswith('bShouldLetterbox='):
+                    new_lines.append('bShouldLetterbox=False\n')
+                elif line.startswith('bLastConfirmedShouldLetterbox='):
+                    new_lines.append('bLastConfirmedShouldLetterbox=False\n')
                 else:
                     new_lines.append(line)
 
-            if not fullscreen_mode_exists:
-                new_lines.insert(new_lines.index('[/Script/ShooterGame.ShooterGameUserSettings]\n') + 1, 'FullscreenMode=2\n')
-
             with open(filename, 'w') as file:
                 file.writelines(new_lines)
-
         except Exception as e:
             messagebox.showerror("Erreur", f"Une erreur est survenue lors de la mise à jour du fichier INI : {e}")
 
