@@ -26,7 +26,7 @@ class App:
 
         self.selected_file = None
         self.selected_resolution = (1440, 1080)
-        self.prog_version = "3.2"
+        self.prog_version = "3.3"
         self.config_dir = self.get_config_directory()
         self.create_widgets()
         self.load_settings()
@@ -240,28 +240,58 @@ class App:
                 lines = file.readlines()
 
             new_lines = []
+            in_section = False
+            fullscreen_mode_exists = False
+
             for line in lines:
-                if line.startswith('ResolutionSizeX='):
-                    new_lines.append(f'ResolutionSizeX={width}\n')
-                elif line.startswith('ResolutionSizeY='):
-                    new_lines.append(f'ResolutionSizeY={height}\n')
-                elif line.startswith('FullscreenMode='):
-                    new_lines.append('FullscreenMode=2\n')
-                elif line.startswith('PreferredFullscreenMode='):
-                    new_lines.append('PreferredFullscreenMode=2\n')
-                elif line.startswith('LastConfirmedFullscreenMode='):
-                    new_lines.append('LastConfirmedFullscreenMode=2 \n')
-                elif line.startswith('bShouldLetterbox='):
-                    new_lines.append('bShouldLetterbox=False\n')
-                elif line.startswith('bLastConfirmedShouldLetterbox='):
-                    new_lines.append('bLastConfirmedShouldLetterbox=False\n')
+                # Vérifie si on est dans la section [/Script/ShooterGame.ShooterGameUserSettings]
+                if line.strip() == '[/Script/ShooterGame.ShooterGameUserSettings]':
+                    in_section = True
+                    new_lines.append(line)
+                    continue
+
+                # Vérifie si on sort de la section
+                if in_section and line.strip().startswith('['):
+                    in_section = False
+                    if not fullscreen_mode_exists:
+                        new_lines.append('FullscreenMode=2\n')
+                    new_lines.append(line)
+                    continue
+
+                # Si on est dans la section, vérifier ou ajouter FullscreenMode
+                if in_section:
+                    if line.startswith('FullscreenMode='):
+                        fullscreen_mode_exists = True
+                        new_lines.append('FullscreenMode=2\n')
+                    else:
+                        new_lines.append(line)
                 else:
                     new_lines.append(line)
+
+                # Modification des autres paramètres indépendamment de la section
+                if line.startswith('ResolutionSizeX='):
+                    new_lines[-1] = f'ResolutionSizeX={width}\n'
+                elif line.startswith('ResolutionSizeY='):
+                    new_lines[-1] = f'ResolutionSizeY={height}\n'
+                elif line.startswith('PreferredFullscreenMode='):
+                    new_lines[-1] = 'PreferredFullscreenMode=2\n'
+                elif line.startswith('LastConfirmedFullscreenMode='):
+                    new_lines[-1] = 'LastConfirmedFullscreenMode=2\n'
+                elif line.startswith('bShouldLetterbox='):
+                    new_lines[-1] = 'bShouldLetterbox=False\n'
+                elif line.startswith('bLastConfirmedShouldLetterbox='):
+                    new_lines[-1] = 'bLastConfirmedShouldLetterbox=False\n'
+
+            # S'assurer d'ajouter FullscreenMode si la section était la dernière
+            if in_section and not fullscreen_mode_exists:
+                new_lines.append('FullscreenMode=2\n')
 
             with open(filename, 'w') as file:
                 file.writelines(new_lines)
         except Exception as e:
             messagebox.showerror("Erreur", f"Une erreur est survenue lors de la mise à jour du fichier INI : {e}")
+
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
